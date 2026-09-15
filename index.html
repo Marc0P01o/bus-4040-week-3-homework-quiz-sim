@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BUS 4040 Quiz Simulator &mdash; Weeks 1 to 3</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --card: #ffffff;
+    --ink: #1c1b19;
+    --muted: #6b6862;
+    --line: #e3e0da;
+    --accent: #2f5d50;
+    --accent-ink: #ffffff;
+    --good: #1f7a4d;
+    --good-bg: #eaf6ef;
+    --bad: #a83232;
+    --bad-bg: #fbeded;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 32px 20px 64px;
+  }
+  main { width: 100%; max-width: 680px; }
+  header { margin-bottom: 24px; }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .badge {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .bar { height: 4px; background: var(--line); border-radius: 999px; overflow: hidden; margin-bottom: 22px; }
+  .bar > div { height: 100%; background: var(--accent); width: 0; transition: width .25s ease; }
+  .q { font-size: 19px; line-height: 1.45; margin: 0 0 20px; font-weight: 600; }
+  .opts { display: flex; flex-direction: column; gap: 10px; }
+  .opt {
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 13px 16px;
+    cursor: pointer;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    transition: border-color .15s, background .15s;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: #fbfbfa; }
+  .opt:disabled { cursor: default; }
+  .opt .key {
+    flex: none;
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    display: grid; place-items: center;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+  .opt.correct { border-color: var(--good); background: var(--good-bg); }
+  .opt.correct .key { border-color: var(--good); color: var(--good); }
+  .opt.wrong { border-color: var(--bad); background: var(--bad-bg); }
+  .opt.wrong .key { border-color: var(--bad); color: var(--bad); }
+  .fb { margin-top: 20px; padding: 16px 18px; border-radius: 9px; border: 1px solid var(--line); display: none; }
+  .fb.show { display: block; }
+  .fb.right { border-color: var(--good); background: var(--good-bg); }
+  .fb.wrong { border-color: var(--bad); background: var(--bad-bg); }
+  .fb h3 { margin: 0 0 6px; font-size: 15px; }
+  .fb.right h3 { color: var(--good); }
+  .fb.wrong h3 { color: var(--bad); }
+  .fb p { margin: 0; font-size: 15px; }
+  .fb .src { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .row { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+  button.primary {
+    font: inherit; font-weight: 600;
+    background: var(--accent); color: var(--accent-ink);
+    border: 1px solid var(--accent); border-radius: 9px;
+    padding: 11px 20px; cursor: pointer;
+  }
+  button.primary:hover { opacity: .9; }
+  button.ghost {
+    font: inherit;
+    background: transparent; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 11px 20px; cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--accent); }
+  .score { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+  .score small { font-size: 18px; font-weight: 500; color: var(--muted); }
+  .verdict { color: var(--muted); margin: 6px 0 24px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 15px; }
+  th, td { text-align: left; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .missed { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+  .missed-list { margin: 0 0 24px; padding-left: 20px; color: var(--muted); font-size: 14px; }
+  .missed-list li { margin-bottom: 6px; }
+  .intro p { margin: 0 0 14px; }
+  .intro ul { margin: 0 0 18px; padding-left: 20px; color: var(--muted); font-size: 15px; }
+  .intro li { margin-bottom: 5px; }
+  footer { margin-top: 20px; text-align: center; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>BUS 4040 Quiz Simulator</h1>
+    <p class="sub">AI for Business Applications &mdash; Weeks 1 to 3</p>
+  </header>
+
+  <section id="start" class="card intro">
+    <p>Twenty questions drawn only from the Week 1, 2, and 3 course material. Multiple choice and true/false, one at a time.</p>
+    <ul>
+      <li>The order is shuffled every run</li>
+      <li>You find out right away whether you were right, and why</li>
+      <li>Each answer names the week it came from</li>
+      <li>At the end you can retry just the ones you missed</li>
+    </ul>
+    <button class="primary" id="btn-start">Start the quiz</button>
+  </section>
+
+  <section id="quiz" class="card" hidden>
+    <div class="meta">
+      <span id="counter">Question 1 of 20</span>
+      <span class="badge" id="week-badge">Week 1</span>
+    </div>
+    <div class="bar"><div id="bar-fill"></div></div>
+    <p class="q" id="question"></p>
+    <div class="opts" id="options"></div>
+    <div class="fb" id="feedback">
+      <h3 id="fb-title"></h3>
+      <p id="fb-why"></p>
+      <p class="src" id="fb-src"></p>
+    </div>
+    <div class="row" id="next-row" style="display:none">
+      <button class="primary" id="btn-next">Next question</button>
+    </div>
+  </section>
+
+  <section id="results" class="card" hidden>
+    <p class="score"><span id="score-num">0</span><small> / <span id="score-den">20</span></small></p>
+    <p class="verdict" id="verdict"></p>
+    <table>
+      <thead><tr><th>Source</th><th class="num">Correct</th><th class="num">Asked</th></tr></thead>
+      <tbody id="breakdown"></tbody>
+    </table>
+    <div id="missed-block">
+      <p class="missed">Questions you missed</p>
+      <ul class="missed-list" id="missed-list"></ul>
+    </div>
+    <div class="row">
+      <button class="primary" id="btn-retry">Retry the ones I missed</button>
+      <button class="ghost" id="btn-restart">Start over with all 20</button>
+    </div>
+  </section>
+
+  <footer>Built for BUS 4040. Every question comes from the Week 1 to 3 course files.</footer>
+</main>
+
+<script>
+var QUESTIONS = [
+  { id: 1, week: 1, type: "mc",
+    q: "According to the Week 1 narrative, what will you NOT learn in this class?",
+    options: ["How to use AI tools", "How to program", "How to write product requirements", "How to work on a team"],
+    answer: 1,
+    why: "Week 1 says it plainly: 'You will not learn to program in this class.' The instructor shows the tools, you decide what gets built, and AI does the building." },
+
+  { id: 2, week: 1, type: "tf",
+    q: "Peer Review is worth more of your final grade than the Final Exam.",
+    options: ["True", "False"],
+    answer: 0,
+    why: "Peer Review is 15% and the Final Exam is 10%. How your teammates rate your collegiality counts for more than the written exam." },
+
+  { id: 3, week: 1, type: "mc",
+    q: "Week 1 says version control answers three questions that matter once AI writes code faster than you can read it. Which one is NOT among them?",
+    options: ["Can I tell what just changed?", "Can I undo it?", "Can somebody else check it before it reaches a customer?", "Can I make the AI write it faster?"],
+    answer: 3,
+    why: "The three questions are about seeing the change, undoing it, and getting it reviewed. Speed is what creates the problem, not what version control solves." },
+
+  { id: 4, week: 1, type: "tf",
+    q: "If you already have a GitHub account, Week 1 tells you to create a second one for this class.",
+    options: ["True", "False"],
+    answer: 1,
+    why: "The instruction is the opposite. Do not create a second account. Add your U of I email to the account you already have so you keep your existing history." },
+
+  { id: 5, week: 1, type: "mc",
+    q: "According to Week 1, what was the bottleneck in building software until recently?",
+    options: ["Computing hardware", "Expert human software engineers", "Access to the internet", "Written business requirements"],
+    answer: 1,
+    why: "The bottleneck was expert human software engineers. The person with the business problem described it roughly, handed it off, and hoped. AI is removing that bottleneck and shifting the work left." },
+
+  { id: 6, week: 2, type: "mc",
+    q: "Who created Git, and in what year?",
+    options: ["Linus Torvalds, in 2005", "Linus Torvalds, in 1995", "The GitHub team, in 2008", "Ryan Carlyle, in 2005"],
+    answer: 0,
+    why: "Linus Torvalds created Git in 2005 for Linux kernel development, after the project lost access to its proprietary tool." },
+
+  { id: 7, week: 2, type: "mc",
+    q: "In the Marvel multiverse analogy from Week 2, what is main?",
+    options: ["A new timeline you create", "The original reality", "The copy sitting on your local computer", "The staging area for files"],
+    answer: 1,
+    why: "main is the original reality. Checking out a branch creates a new timeline, and clone is what copies the repo down to your computer." },
+
+  { id: 8, week: 2, type: "tf",
+    q: "GitHub accepts your username and password from tools running on your computer, such as Git or VS Code.",
+    options: ["True", "False"],
+    answer: 1,
+    why: "GitHub does not accept user and password auth from tools on your computer. You connect over HTTPS with a token or browser login, or with SSH keys. For this class HTTPS is fine." },
+
+  { id: 9, week: 2, type: "mc",
+    q: "Week 2 says to switch on 'Add a README file' when you create a repo. Why does that matter?",
+    options: ["It makes the repository public", "It creates the first commit and the main branch, so the repo is not empty when you clone it", "It turns on two-factor authentication", "It is required before you can open a Pull Request"],
+    answer: 1,
+    why: "Creating the README creates an initial commit, and that commit is what maps the repo to the main branch. Without it you clone an empty repo." },
+
+  { id: 10, week: 2, type: "mc",
+    q: "You ran gh auth login and it succeeded. What does it NOT do for you?",
+    options: ["Log you in to GitHub.com", "Authenticate Git with your GitHub credentials", "Set your commit identity, meaning your name and email", "Let you pick HTTPS as the protocol"],
+    answer: 2,
+    why: "Week 2 calls this out directly. You set the commit identity yourself with git config --global user.name and user.email, once per machine. gh auth login does not do it." },
+
+  { id: 11, week: 2, type: "mc",
+    q: "Your push fails with 'GH007: Your push would publish a private email address'. What is the fix?",
+    options: ["Run gh auth login again", "Set git config --global user.email to your GitHub noreply address", "Delete the branch and start over", "Install Git Credential Manager"],
+    answer: 1,
+    why: "That error means your commit email is set to your real address while email privacy is switched on. Change it to the noreply address GitHub lists under Settings then Emails, and push again." },
+
+  { id: 12, week: 2, type: "tf",
+    q: "Week 2 recommends committing your work directly to the main branch.",
+    options: ["True", "False"],
+    answer: 1,
+    why: "Week 2 says to avoid committing to main. You create a branch instead, which keeps the changes off main and mirrors the Pull Request workflow real teams use." },
+
+  { id: 13, week: 3, type: "mc",
+    q: "Name the four Claude tiers, largest to smallest.",
+    options: ["Opus, Fable, Sonnet, Haiku", "Fable, Opus, Sonnet, Haiku", "Fable, Sonnet, Opus, Haiku", "Haiku, Sonnet, Opus, Fable"],
+    answer: 1,
+    why: "Fable, Opus, Sonnet, Haiku. Fable is the top end model for the hardest problems and Haiku is the fast cheap one for simple high volume work." },
+
+  { id: 14, week: 3, type: "mc",
+    q: "Week 3 describes Sonnet as which of these?",
+    options: ["The top end model for the hardest problems", "The cost effective everyday workhorse", "Fast, cheap, and less capable", "An open weight model you download and run yourself"],
+    answer: 1,
+    why: "Sonnet is the everyday workhorse. Opus is a step up at roughly twice the cost, Fable is the top end, and Haiku is the fast cheap one." },
+
+  { id: 15, week: 3, type: "mc",
+    q: "What is a token?",
+    options: ["A password used to authenticate with GitHub", "A chunk of text, roughly three quarters of an English word on average", "A number inside the model that gets tuned during training", "The program you use to talk to a model"],
+    answer: 1,
+    why: "A token is a chunk of text. The numbers tuned during training are parameters, and the program you use to reach the model is the harness." },
+
+  { id: 16, week: 3, type: "tf",
+    q: "A long chat costs more per message than a short one.",
+    options: ["True", "False"],
+    answer: 0,
+    why: "Every turn resends the whole conversation, so the longer the chat runs the more tokens each new message costs. A large context can also cause the session to drift off track." },
+
+  { id: 17, week: 3, type: "mc",
+    q: "Finish the Week 3 analogy. The harness is the music player, the model is the ...",
+    options: ["speaker", "music", "playlist", "headphones"],
+    answer: 1,
+    why: "The harness is the program you interact with, such as the Claude app, Claude Code, or Ollama. The model is the AI behind it." },
+
+  { id: 18, week: 3, type: "mc",
+    q: "Which of these is an open weight model you can download and run on your own hardware?",
+    options: ["Claude", "GPT", "Gemini", "Llama"],
+    answer: 3,
+    why: "Llama is Meta's open weight model, the one that made open weight AI mainstream. Claude, GPT, and Gemini are closed models that run on the vendor's servers, so you rent access." },
+
+  { id: 19, week: 3, type: "tf",
+    q: "You should choose a model based on its parameter count.",
+    options: ["True", "False"],
+    answer: 1,
+    why: "Week 3 says you do not pick models by parameter count. You pick by result, speed, and price. There is no single best model, only a best fit for the job, the budget, and the privacy requirement." },
+
+  { id: 20, week: 3, type: "mc",
+    q: "When you configure Cline to reach MindRouter, which API Provider do you select?",
+    options: ["OpenAI", "OpenAI Compatible", "Anthropic", "Bring my own API key"],
+    answer: 1,
+    why: "Select OpenAI Compatible. The troubleshooting table notes that picking plain OpenAI by mistake is one cause of a 401 Unauthorized." }
+];
+
+var LETTERS = ["A", "B", "C", "D"];
+
+var pool = [];
+var idx = 0;
+var results = {};
+var locked = false;
+
+var el = function (id) { return document.getElementById(id); };
+
+function shuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function startQuiz(questions) {
+  pool = shuffle(questions);
+  idx = 0;
+  results = {};
+  el("start").hidden = true;
+  el("results").hidden = true;
+  el("quiz").hidden = false;
+  render();
+}
+
+function render() {
+  var q = pool[idx];
+  locked = false;
+
+  el("counter").textContent = "Question " + (idx + 1) + " of " + pool.length;
+  el("week-badge").textContent = "Week " + q.week;
+  el("bar-fill").style.width = (idx / pool.length * 100) + "%";
+  el("question").textContent = q.q;
+
+  var box = el("options");
+  box.innerHTML = "";
+  q.options.forEach(function (text, i) {
+    var b = document.createElement("button");
+    b.className = "opt";
+    b.type = "button";
+    var key = document.createElement("span");
+    key.className = "key";
+    key.textContent = q.type === "tf" ? (i === 0 ? "T" : "F") : LETTERS[i];
+    var label = document.createElement("span");
+    label.textContent = text;
+    b.appendChild(key);
+    b.appendChild(label);
+    b.onclick = function () { answer(i); };
+    box.appendChild(b);
+  });
+
+  var fb = el("feedback");
+  fb.className = "fb";
+  el("next-row").style.display = "none";
+  el("btn-next").textContent = (idx === pool.length - 1) ? "See my results" : "Next question";
+}
+
+function answer(choice) {
+  if (locked) { return; }
+  locked = true;
+
+  var q = pool[idx];
+  var right = choice === q.answer;
+  results[q.id] = right;
+
+  var buttons = el("options").children;
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].disabled = true;
+    if (i === q.answer) { buttons[i].className = "opt correct"; }
+    else if (i === choice) { buttons[i].className = "opt wrong"; }
+  }
+
+  var fb = el("feedback");
+  fb.className = "fb show " + (right ? "right" : "wrong");
+  el("fb-title").textContent = right ? "Correct" : "Not quite";
+  el("fb-why").textContent = q.why;
+  el("fb-src").textContent = "Review: Week " + q.week + " material";
+
+  el("next-row").style.display = "flex";
+}
+
+function nextQuestion() {
+  if (idx < pool.length - 1) { idx++; render(); }
+  else { showResults(); }
+}
+
+function showResults() {
+  el("quiz").hidden = true;
+  el("results").hidden = false;
+
+  var asked = pool.length;
+  var correct = 0;
+  var byWeek = {};
+  var missed = [];
+
+  pool.forEach(function (q) {
+    var ok = results[q.id] === true;
+    if (ok) { correct++; } else { missed.push(q); }
+    if (!byWeek[q.week]) { byWeek[q.week] = { c: 0, n: 0 }; }
+    byWeek[q.week].n++;
+    if (ok) { byWeek[q.week].c++; }
+  });
+
+  el("score-num").textContent = correct;
+  el("score-den").textContent = asked;
+
+  var pct = Math.round(correct / asked * 100);
+  var line;
+  if (pct === 100) { line = "Perfect run. Nothing to review."; }
+  else if (pct >= 80) { line = pct + "% correct. Look at the weeks listed below and you are in good shape."; }
+  else if (pct >= 60) { line = pct + "% correct. Worth rereading the weakest week before the exam."; }
+  else { line = pct + "% correct. Go back through the weekly files, then run this again."; }
+  el("verdict").textContent = line;
+
+  var tbody = el("breakdown");
+  tbody.innerHTML = "";
+  Object.keys(byWeek).sort().forEach(function (w) {
+    var tr = document.createElement("tr");
+    var td1 = document.createElement("td");
+    td1.textContent = "Week " + w;
+    var td2 = document.createElement("td");
+    td2.className = "num";
+    td2.textContent = byWeek[w].c;
+    var td3 = document.createElement("td");
+    td3.className = "num";
+    td3.textContent = byWeek[w].n;
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+    tbody.appendChild(tr);
+  });
+
+  var block = el("missed-block");
+  var list = el("missed-list");
+  list.innerHTML = "";
+  if (missed.length === 0) {
+    block.style.display = "none";
+    el("btn-retry").style.display = "none";
+  } else {
+    block.style.display = "block";
+    el("btn-retry").style.display = "inline-block";
+    el("btn-retry").textContent = "Retry the " + missed.length + " I missed";
+    missed.forEach(function (q) {
+      var li = document.createElement("li");
+      li.textContent = "Week " + q.week + " — " + q.q;
+      list.appendChild(li);
+    });
+  }
+
+  window.__missed = missed;
+}
+
+el("btn-start").onclick = function () { startQuiz(QUESTIONS); };
+el("btn-next").onclick = nextQuestion;
+el("btn-restart").onclick = function () { startQuiz(QUESTIONS); };
+el("btn-retry").onclick = function () {
+  if (window.__missed && window.__missed.length) { startQuiz(window.__missed); }
+};
+</script>
+</body>
+</html>
